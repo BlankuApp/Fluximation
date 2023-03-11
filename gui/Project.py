@@ -1,6 +1,7 @@
-from PySide2.QtWidgets import QTreeWidgetItem, QMdiSubWindow
+from PySide2.QtWidgets import QTreeWidgetItem
 from PySide2.QtCore import Qt, QObject
 from PySide2.QtGui import QIcon
+from gui.Geometry.Shape import ShapeSet
 
 
 class Project(QObject):
@@ -8,6 +9,7 @@ class Project(QObject):
         super().__init__(parent)
         self.name = p_name
         self.setObjectName(f"{self.name}")
+        self.shapes = ShapeSet([])
 
         # all about tree widget
         self.main_tree_widget_branch = []
@@ -27,3 +29,9 @@ class Project(QObject):
         self.geometry_tree_widget_branch = QTreeWidgetItem(self.main_tree_widget_branch, ["Geometry"], 0)
         self.geometry_tree_widget_branch.setIcon(0, QIcon('./gui/res/geometry_icon.png'))
         self.geometry_tree_widget_branch.setData(0, Qt.UserRole, f"{self.name}-geometry")
+
+    # def update_geometry_tree(self):
+    #     for count, shape in enumerate(self.shapes):
+    #         self.script_tree_widget_branch = QTreeWidgetItem(self.main_tree_widget_branch, ["Script"], 0)
+
+
