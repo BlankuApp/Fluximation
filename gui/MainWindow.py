@@ -1,6 +1,16 @@
-from PySide2.QtWidgets import QMainWindow, QDockWidget, QMdiArea, QMdiSubWindow
-from PySide2.QtWidgets import QTreeWidget, QToolBar, QStatusBar
-from PySide2.QtWidgets import QAction, QTreeWidgetItem
+from PySide2.QtWidgets import (QMainWindow,
+                               QDockWidget,
+                               QMdiArea,
+                               QMdiSubWindow,
+                               QHeaderView,
+                               QAction,
+                               QTreeWidgetItem,
+                               QTreeWidget,
+                               QToolBar,
+                               QStatusBar,
+                               QTableWidget,
+                               QTableWidgetItem,
+                               QDialog)
 from PySide2.QtCore import Qt
 from PySide2.QtGui import QFont, QIcon
 
@@ -8,6 +18,8 @@ from gui.App import App
 from gui.Project import Project
 from gui.ScriptingWindow import ScriptingWindow
 from gui.GeometryWindow import GeometryWindow
+from gui.Geometry.Shape import Shape
+from gui.Dialogs.NewProject import NewProjectDialog
 
 
 class MainWindow(QMainWindow):
@@ -31,10 +43,22 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.property_dock)
 
         # Create a projects tree view
-        self.projects_tree_widget = QTreeWidget()
+        self.projects_tree_widget = QTreeWidget(self)
         self.projects_tree_widget.setHeaderHidden(True)
         self.projects_dock.setWidget(self.projects_tree_widget)
         self.projects_tree_widget.itemDoubleClicked.connect(self.project_tree_double_clicked)
+        self.projects_tree_widget.itemClicked.connect(self.project_tree_clicked)
+
+        # Create property table widget
+        self.property_table_widget = QTableWidget(self)
+        self.property_table_widget.setRowCount(5)
+        self.property_table_widget.setColumnCount(2)
+        self.property_table_widget.verticalHeader().hide()
+        self.property_table_widget.horizontalHeader().hide()
+        self.property_table_widget.horizontalHeader().setStretchLastSection(True)
+        self.property_table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.property_table_widget.verticalHeader().setDefaultSectionSize(10)
+        self.property_dock.setWidget(self.property_table_widget)
 
         # Create status bar
         self.status_bar = QStatusBar()
@@ -48,18 +72,37 @@ class MainWindow(QMainWindow):
         self.projects_toolbar = QToolBar()
         self.addToolBar(self.projects_toolbar)
 
-        # Create an action for the projects_toolbar
+        # Create projects menubar
+        self.projects_menubar = self.menuBar().addMenu("Project")
+
+        # Create new action
         self.new_action = QAction('New', self)
+        self.new_action.setShortcut("Ctrl+N")
+        self.new_action.setIcon(QIcon('./gui/res/document-new.svg'))
 
-        # Add the new_action to the toolbar
-        self.new_action.triggered.connect(self.add_project)
+        # Create save action
+        self.save_action = QAction("Save", self)
+        self.save_action.setShortcut("Ctrl+S")
+        self.save_action.setIcon(QIcon('./gui/res/document-save.svg'))
 
-        self.projects_toolbar.addAction(self.new_action)
+        # Create open action
+        self.open_action = QAction("Open", self)
+        self.open_action.setShortcut("Ctrl+O")
+        self.open_action.setIcon(QIcon('./gui/res/document-open.svg'))
+
+        # Add the actions to the toolbar
+        # self.new_action.triggered.connect(self.new_project)
+        self.new_action.triggered.connect(lambda: NewProjectDialog(self).show())
+
+        actions = [self.new_action, self.open_action, self.save_action]
+        self.projects_toolbar.addActions(actions)
+        self.projects_menubar.addActions(actions)
 
     def project_tree_double_clicked(self, item: QTreeWidgetItem, col: int):
         item_data = item.data(0, Qt.UserRole)
-        self.status_bar.showMessage(item_data)
-        project_name, section = item_data.split("-")
+        tags = item_data.split("-")
+        project_name = tags[0]
+        section = tags[1]
 
         # make the selected project active
         if section == "main":
@@ -70,26 +113,50 @@ class MainWindow(QMainWindow):
             p = self.findChildren(Project, project_name)[0]
             self.show_script_sub_win(p)
 
+        # show the geometry window if closed
+        if section == "geometry":
+            p = self.findChildren(Project, project_name)[0]
+            self.show_geometry_sub_win(p)
+
+    def project_tree_clicked(self, item: QTreeWidgetItem, col: int):
+        item_data = item.data(0, Qt.UserRole)
+        self.status_bar.showMessage(item_data)
+        tags = item_data.split("-")
+        project_name = tags[0]
+        section = tags[1]
+
+        p: Project = self.findChildren(Project, project_name)[0]
+        if section == "shape":
+            s: Shape = p.shapes[item.text(0)]
+            self.property_table_widget.setRowCount(len(s.prop))
+            i = 0
+            for key, value in s.prop.items():
+                self.property_table_widget.setItem(i, 0, QTableWidgetItem(key))
+                self.property_table_widget.setItem(i, 1, QTableWidgetItem(str(value)))
+                i += 1
+        elif section == "transformation":
+            shape_item = item.parent()
+            s: Shape = p.shapes[shape_item.text(0)]
+            transformation_index = shape_item.indexOfChild(item)
+            transformation = s.transformations[transformation_index]
+            self.property_table_widget.setRowCount(len(transformation.prop))
+            i = 0
+            for key, value in transformation.prop.items():
+                self.property_table_widget.setItem(i, 0, QTableWidgetItem(key))
+                self.property_table_widget.setItem(i, 1, QTableWidgetItem(repr(value)))
+                i += 1
+
     def set_active_project(self, item, project_name, col=0):
         normal_font = QFont()
         bold_font = QFont()
         bold_font.setBold(True)
         for project in self.main_app.projects:
             project.main_tree_widget_branch.setFont(col, normal_font)
+            project.main_tree_widget_branch.setExpanded(True)
         item.setFont(col, bold_font)
         self.setWindowTitle(project_name)
 
-    def add_project(self):
-        # find new name
-        name = "Project"
-        i = 1
-        for p in self.main_app.projects:
-            if name == p.name:
-                name = f"Project{i}"
-                i += 1
-            else:
-                break
-
+    def new_project(self, name: str):
         # make the project
         p = Project(name, self)
         self.main_app.projects.append(p)
@@ -99,6 +166,13 @@ class MainWindow(QMainWindow):
         self.show_geometry_sub_win(p)
 
     def show_script_sub_win(self, project: Project):
+        # check if the subWin already exist
+        sub_wins = self.mdi_area.subWindowList()
+        for sub_win in sub_wins:
+            if sub_win.windowTitle() == f"Script ({project.name})":
+                self.mdi_area.setActiveSubWindow(sub_win)
+                return
+        # if sub_win is closed make new one
         script_win = ScriptingWindow(project)
         sub_win = QMdiSubWindow()
         sub_win.setAttribute(Qt.WA_DeleteOnClose, True)
@@ -108,6 +182,12 @@ class MainWindow(QMainWindow):
         sub_win.show()
 
     def show_geometry_sub_win(self, project: Project):
+        # check if the subWin already exist
+        sub_wins = self.mdi_area.subWindowList()
+        for sub_win in sub_wins:
+            if sub_win.windowTitle() == f"Geometry ({project.name})":
+                self.mdi_area.setActiveSubWindow(sub_win)
+                return
         geometry_win = GeometryWindow(project)
         sub_win = QMdiSubWindow()
         sub_win.setAttribute(Qt.WA_DeleteOnClose, True)
