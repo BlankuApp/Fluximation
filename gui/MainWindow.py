@@ -10,18 +10,19 @@ from PySide2.QtWidgets import (QMainWindow,
                                QStatusBar,
                                QTableWidget,
                                QTableWidgetItem,
-                               QDialog)
+                               QFileDialog,
+                               QMessageBox)
 from PySide2.QtCore import Qt
 from PySide2.QtGui import QFont, QIcon
 
 from gui.App import App
-from gui.Project import Project
+from gui.Project import Project, GeometryType
 from gui.ScriptingWindow import ScriptingWindow
 from gui.GeometryWindow import GeometryWindow
 from gui.Geometry.Shape import Shape
 from gui.Dialogs.NewProject import NewProjectDialog
 
-
+import json, os
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -91,15 +92,16 @@ class MainWindow(QMainWindow):
         self.open_action.setIcon(QIcon('./gui/res/document-open.svg'))
 
         # Add the actions to the toolbar
-        # self.new_action.triggered.connect(self.new_project)
         self.new_action.triggered.connect(lambda: NewProjectDialog(self).show())
+        self.save_action.triggered.connect(self.save_project)
+        self.open_action.triggered.connect(self.open_project)
 
         actions = [self.new_action, self.open_action, self.save_action]
         self.projects_toolbar.addActions(actions)
         self.projects_menubar.addActions(actions)
 
     def project_tree_double_clicked(self, item: QTreeWidgetItem, col: int):
-        item_data = item.data(0, Qt.UserRole)
+        item_data = item.data(col, Qt.UserRole)
         tags = item_data.split("-")
         project_name = tags[0]
         section = tags[1]
@@ -119,7 +121,7 @@ class MainWindow(QMainWindow):
             self.show_geometry_sub_win(p)
 
     def project_tree_clicked(self, item: QTreeWidgetItem, col: int):
-        item_data = item.data(0, Qt.UserRole)
+        item_data = item.data(col, Qt.UserRole)
         self.status_bar.showMessage(item_data)
         tags = item_data.split("-")
         project_name = tags[0]
@@ -156,14 +158,15 @@ class MainWindow(QMainWindow):
         item.setFont(col, bold_font)
         self.setWindowTitle(project_name)
 
-    def new_project(self, name: str):
+    def new_project(self, name: str, geometry_type: GeometryType):
         # make the project
-        p = Project(name, self)
+        p = Project(name, geometry_type, self)
         self.main_app.projects.append(p)
         self.set_active_project(p.main_tree_widget_branch, name)
         self.projects_tree_widget.insertTopLevelItem(0, p.main_tree_widget_branch)
         self.show_script_sub_win(p)
         self.show_geometry_sub_win(p)
+        return p
 
     def show_script_sub_win(self, project: Project):
         # check if the subWin already exist
@@ -195,3 +198,31 @@ class MainWindow(QMainWindow):
         sub_win.setWindowIcon(QIcon('./gui/res/geometry_icon.png'))
         self.mdi_area.addSubWindow(sub_win)
         sub_win.show()
+
+    def save_project(self):
+        project: Project = self.main_app.get_project_by_name(self.windowTitle())
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getSaveFileName(self, "Save Project", f"{project.name}", "Text Files (*.txt)", options=options)
+        if file_name:
+            with open(file_name, 'w') as f:
+                json.dump(project.dict_form(), f)
+
+    def open_project(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open Project", "", "Text Files (*.txt)")
+        if file_path:
+            with open(file_path, 'r') as f:
+                project_json = json.load(f)
+                file_name = os.path.splitext(os.path.basename(file_path))[0]
+                if self.main_app.get_project_by_name(file_name):
+                    error_box = QMessageBox()
+                    error_box.setIcon(QMessageBox.Critical)
+                    error_box.setWindowTitle("Error")
+                    error_box.setText("Project already exists.")
+                    error_box.setInformativeText(
+                        "A project with the same name already exists. Please choose a different name for your project.")
+                    error_box.setStandardButtons(QMessageBox.Ok)
+                    error_box.exec_()
+                    return
+                project = self.new_project(file_name, project_json["geometry_type"])
+                project.script_text = project_json["script_text"]
+

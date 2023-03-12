@@ -166,7 +166,7 @@ class Box(Shape):
     def prop(self):
         return {"name": self.name,
                 "color": self.color.hex_rgb,
-                "starting point": self.starting_point,
+                "starting_point": self.starting_point,
                 "dimension": self.dimension}
 
 

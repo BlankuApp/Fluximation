@@ -1,8 +1,6 @@
 from PySide2.QtWidgets import QMdiArea
-from PySide2.QtWidgets import QTreeWidget, QTreeWidgetItem
+from PySide2.QtWidgets import QTreeWidget
 from PySide2.QtCore import QObject
-
-from gui.Project import Project
 
 
 class App(QObject):
@@ -12,5 +10,8 @@ class App(QObject):
         self.projects_tree_widget = projects_tree_widget
         self.projects = []
 
-
-
+    def get_project_by_name(self, name):
+        for project in self.projects:
+            if project.name == name:
+                return project
+        return None

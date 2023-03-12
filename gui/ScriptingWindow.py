@@ -13,13 +13,8 @@ class ScriptingWindow(QMainWindow):
         self.setWindowTitle(f"Script ({project.name})")
         self.script_win = self
         self.text_editor = QTextEdit()
-        self.text_editor.setText('''box = Box([0, 5, 0], [1, 1, 1])
-cone = Cone(1, 0.5, 2)
-sphere = Sphere([1,0,0],0.5)
-cone = Cut(cone,sphere)
-sphere.translate([5,0,0])
-points = [[0,0,0],[1,2,0],[2,3,0],[4,3,0],[5,5,0]]
-spline = BSpline(points)''')
+        self.text_editor.setText(project.script_text)
+        self.text_editor.textChanged.connect(self.update_project)
         self.setCentralWidget(self.text_editor)
 
         # execution toolbar
@@ -27,6 +22,7 @@ spline = BSpline(points)''')
         self.addToolBar(execution_toolbar)
 
         run_action = QAction("Run", self)
+        run_action.setShortcut("Ctrl+R")
         execution_toolbar.addAction(run_action)
 
         run_action.triggered.connect(self.run)
@@ -52,3 +48,5 @@ spline = BSpline(points)''')
 
         self.project.geometry_win.cam_orient_widget.On()
 
+    def update_project(self):
+        self.project.script_text = self.text_editor.toPlainText()

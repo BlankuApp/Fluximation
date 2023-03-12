@@ -2,14 +2,29 @@ from PySide2.QtWidgets import QTreeWidgetItem
 from PySide2.QtCore import Qt, QObject
 from PySide2.QtGui import QIcon
 from gui.Geometry.Shape import ShapeSet
+from enum import Enum
+
+
+class GeometryType(Enum):
+    two_dimensional = 2
+    three_dimensional = 3
 
 
 class Project(QObject):
-    def __init__(self, p_name: str, parent: QObject):
+
+    def __init__(self, p_name: str, geometry_type: GeometryType, parent: QObject):
         super().__init__(parent)
         self.name = p_name
         self.setObjectName(f"{self.name}")
         self.shapes = ShapeSet([])
+        self.geometry_type = geometry_type
+        self.script_text = '''box = Box([0, 5, 0], [1, 1, 1])
+cone = Cone(1, 0.5, 2)
+sphere = Sphere([1,0,0],0.5)
+cone = Cut(cone,sphere)
+sphere.translate([5,0,0])
+points = [[0,0,0],[1,2,0],[2,3,0],[4,3,0],[5,5,0]]
+spline = BSpline(points)'''
 
         # all about tree widget
         self.main_tree_widget_branch = []
@@ -30,8 +45,6 @@ class Project(QObject):
         self.geometry_tree_widget_branch.setIcon(0, QIcon('./gui/res/geometry_icon.png'))
         self.geometry_tree_widget_branch.setData(0, Qt.UserRole, f"{self.name}-geometry")
 
-    # def update_geometry_tree(self):
-    #     for count, shape in enumerate(self.shapes):
-    #         self.script_tree_widget_branch = QTreeWidgetItem(self.main_tree_widget_branch, ["Script"], 0)
-
-
+    def dict_form(self):
+        return {"geometry_type": self.geometry_type.value,
+                "script_text": self.script_text}

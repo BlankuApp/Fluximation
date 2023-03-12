@@ -8,6 +8,7 @@ from PySide2.QtWidgets import (QDialog,
                                QSizePolicy,
                                QDialogButtonBox)
 from PySide2.QtCore import Qt
+from gui.Project import GeometryType
 
 
 class NewProjectDialog(QDialog):
@@ -24,14 +25,14 @@ class NewProjectDialog(QDialog):
 
         # project type
         type_label = QLabel("Geometry Type:")
-        radio1 = QRadioButton("2D", self)
-        radio2 = QRadioButton("3D", self)
-        radio1.setChecked(True)
+        self.radio1 = QRadioButton("2D", self)
+        self.radio2 = QRadioButton("3D", self)
+        self.radio1.setChecked(True)
         type_spacer = QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum)
         type_layout = QHBoxLayout()
         type_layout.addWidget(type_label)
-        type_layout.addWidget(radio1)
-        type_layout.addWidget(radio2)
+        type_layout.addWidget(self.radio1)
+        type_layout.addWidget(self.radio2)
         type_layout.addItem(type_spacer)
 
         # buttons
@@ -73,7 +74,11 @@ class NewProjectDialog(QDialog):
 
     def apply(self):
         name = self.name_line_edit.text()
-        self.parent().new_project(name)
+        if self.radio1.isChecked():
+            self.parent().new_project(name, GeometryType.two_dimensional)
+        else:
+            self.parent().new_project(name, GeometryType.three_dimensional)
+
         self.accept()
 
     def check_name(self):
